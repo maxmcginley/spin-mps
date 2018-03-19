@@ -27,7 +27,7 @@ classdef MPS_BondOperator
             new_states = cell(size(mps.states));
             new_eigs = cell(size(mps.eigs));
             
-            apply_op = reshape(expm(time*obj.log_op),obj.dim,obj.dim,obj.dim,obj.dim);
+            apply_op = reshape(expm(-time*obj.log_op),obj.dim,obj.dim,obj.dim,obj.dim);
             curr_state = mps;
             
             for k = 1:2
@@ -40,27 +40,29 @@ classdef MPS_BondOperator
 
                     chia = size(GamA,2); chib = size(GamB,3); %Dimensions of the extruding legs
 
+                    fprintf('Bond %i: Chi = %i \n',k,size(LamB,1));
+                    
                     assert(size(GamA,3) == size(GamB,2));
 
                     th = tensorprod(GamA,[1,3,-1],GamB,[2,-1,4]); %Before U operation
                     %th = etprod('abcd',GamA,'ack',GamB,'bkd');
-                    th = tensorprod(th,[-1,-2,3,4],apply_op,[-1,-2,1,2]); %Apply the U operator
+                    th = tensorprod(apply_op,[1,2,-1,-2],th,[-1,-2,3,4]); %Apply the U operator
                     th = tensorprod(diag(LamA),[3,-1],th,[1,2,-1,4]); %Multiply by the old schmidt eigs on the left
                     %At this point, th has 4 indices. First two are vertical
                     %legs, second two are the horizontal extruding legs
 
                     th = reshape(permute(th,[1,3,2,4]),(obj.dim)*chia,(obj.dim)*chib);
-                    [u,S,v] = svd(th);
-                    evals = sort(diag(S));
-
+                    [u,S,v] = svd(th); v = v';
+                    [evals,ind] = sort(diag(S),'descend');
+                    
                     CHI_TOLERANCE = 1.e-10; %Threshold below which eigs are removed
                     new_chi = min(chi,sum(evals > CHI_TOLERANCE));
-                    new_inds = 1:new_chi; %Indices of the eigs we will keep
-                    u = u(:,new_inds); evals = evals(new_inds); v = v(new_inds,:);
+                    new_inds = ind(1:new_chi); %Indices of the eigs we will keep
+                    u = u(:,new_inds); v = v(new_inds,:); evals = evals(1:new_chi);
                     evals = evals/sqrt(sum(evals.^2)); %Renormalizing to prevent decay
 
                     u = reshape(u,obj.dim,chia,new_chi);
-                    v = reshape(v,obj.dim,new_chi,chib);
+                    v = permute(reshape(v,new_chi,obj.dim,chib),[2,1,3]);
 
                     u = tensorprod(diag(LamA.^(-1)),[-1,2],u,[1,-1,3]); %Multiply by s_a^-1 on left
                     u = tensorprod(diag(evals),[-1,3],u,[1,2,-1]); %Multiply by s_b on the right to restore form

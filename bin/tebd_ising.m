@@ -15,11 +15,11 @@ figure_handles = cell(1,1);
 addpath(fullfile(pwd,'..'));
 
 %********INPUTS**********
-field = 0.2;
+field = 0.5;
 coupling = 1;
 cell_size = 2;
-timestep = 0.01;
-num_steps = 20;
+timestep = 0.0025;
+num_steps = 2000;
 chi = 50;
 %************************
 
