@@ -47,6 +47,36 @@ classdef SpinMPS
                 
             end
         end
+        
+        function spec = entanglement_spectrum(obj,cut_size)
+            cells = cut_size/obj.cell_size;
+            chil = size(obj.states{1},2); chir = size(obj.states{obj.cell_size},3);
+            topcell = obj.states{1};
+            celldim = obj.dim^(obj.cell_size);
+            for j = 2:obj.cell_size
+                topcell = tensorprod(topcell,[1:(j-1),(j+1),-1],obj.states{1},[j,-1,j+2]);
+            end
+            topcell = reshape(topcell,celldim,chil,chir);
+            
+            toprow = topcell;
+            for j = 2:cells
+                toprow = tensorprod(toprow,[1:(j-1),(j+1),-1],topcell,[j,-1,j+2]);
+            end
+            toprow = tensorprod(diag(obj.eigs{1}),[cells+1,-1],toprow,[1:cells,-1,cells+2]);
+            
+            densmat = reshape(tensorprod(toprow,[1:cells,-1,-2],conj(toprow),[(cells+1):(2*cells),-1,-2]),celldim.^cells,celldim.^cells);
+            spec = eig(densmat);
+        end
+        
+        function test_inversion_symmetry(obj)
+            for c = 1:obj.cell_size
+                st_c = obj.states{c};
+                for j = 1:obj.dim
+                    gam = reshape(st_c(j,:,:),size(st_c,2),size(st_c,3));
+                    gat = gam.';
+                end
+            end
+        end
     end
     
     methods (Static)
@@ -57,7 +87,7 @@ classdef SpinMPS
             for j = 1:cell_size
                 eigs{j} = [1.0]; %Product state on-site
                 sj = zeros(dim,1,1); %The state with non-zero eig
-                sj(1,1,1) = sqrt(0.5); sj(2,1,1) = sqrt(0.5);
+                sj(1,1,1) = 1; sj(2,1,1) = 0; sj(3,1,1) = 0;
                 states{j} = sj;
             end
             
